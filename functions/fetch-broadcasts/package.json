@@ -1,0 +1,22 @@
+{
+  "scripts": {
+    "build": "node build.js",
+    "test": "ts-node test-local.ts",
+    "deploy": "npm run build && cd dist && zip -r ../function.zip . && cd .. && aws lambda update-function-code --function-name sagemaker-pipeline-starter --zip-file fileb://function.zip"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.145",
+    "@types/luxon": "^3.7.1",
+    "@types/node": "^20.10.0",
+    "@types/pg": "^8.10.0",
+    "esbuild": "^0.27.2",
+    "prisma": "^5.20.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.490.0",
+    "@prisma/client": "^5.20.0",
+    "luxon": "^3.7.2"
+  }
+}
