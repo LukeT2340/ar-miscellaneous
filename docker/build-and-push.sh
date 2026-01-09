@@ -4,7 +4,7 @@
 AWS_ACCOUNT_ID="478014850703"
 AWS_REGION="ap-southeast-2"
 AWS_PROFILE="developer-engineer-515422922164"  # Set your AWS SSO profile
-ECR_REPOSITORY="sagemaker-paddleocr"
+ECR_REPOSITORY="ad-detection-sagemaker"
 IMAGE_TAG="latest"
 
 # Export profile for AWS CLI commands

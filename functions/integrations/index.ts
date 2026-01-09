@@ -35,7 +35,7 @@ export const handler = async (event: LambdaEvent) => {
         Arguments: {
           AlgorithmSpecification: {
             TrainingImage:
-              "478014850703.dkr.ecr.ap-southeast-2.amazonaws.com/sagemaker-paddleocr:latest",
+              "763104351884.dkr.ecr.ap-southeast-2.amazonaws.com/pytorch-training:2.0.0-gpu-py310",
             TrainingInputMode: "File",
           },
           RoleArn: process.env.ROLE_ARN!,
@@ -72,7 +72,7 @@ export const handler = async (event: LambdaEvent) => {
       Arguments: {
         AlgorithmSpecification: {
           TrainingImage:
-            "478014850703.dkr.ecr.ap-southeast-2.amazonaws.com/sagemaker-paddleocr:latest",
+            "763104351884.dkr.ecr.ap-southeast-2.amazonaws.com/pytorch-training:2.5.1-gpu-py311",
           TrainingInputMode: "File",
         },
         RoleArn: process.env.ROLE_ARN!,
@@ -111,7 +111,7 @@ export const handler = async (event: LambdaEvent) => {
       Arguments: {
         AlgorithmSpecification: {
           TrainingImage:
-            "478014850703.dkr.ecr.ap-southeast-2.amazonaws.com/sagemaker-paddleocr:latest",
+            "763104351884.dkr.ecr.ap-southeast-2.amazonaws.com/pytorch-training:2.0.0-gpu-py310",
           TrainingInputMode: "File",
         },
         RoleArn: process.env.ROLE_ARN!,

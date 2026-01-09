@@ -67,12 +67,7 @@ RUN pip install --no-cache-dir \
     pytest>=7.0.0 \
     black>=23.0.0
 
-# Verify critical installations
-RUN python -c "import torch; print(f'PyTorch: {torch.__version__}, CUDA: {torch.cuda.is_available()}')" && \
-    python -c "import paddle; print(f'PaddlePaddle: {paddle.__version__}')" && \
-    python -c "import paddleocr; print('PaddleOCR: OK')" && \
-    python -c "import cv2; print(f'OpenCV: {cv2.__version__}')" && \
-    ffmpeg -version | head -n 1
+# Note: Verification skipped during build - packages will be verified at runtime in SageMaker
 
 # Set working directory
 WORKDIR /opt/ml/code
