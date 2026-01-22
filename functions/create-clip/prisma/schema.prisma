@@ -1,0 +1,219 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  role      UserRole @default(USER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
+model Program {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  image     String
+  keyword   String // Pulls broadcast data from 9now api based on this keyword, also searches LOG files for billboards for program matching this
+  createdAt DateTime @default(now())
+  year      Int
+  days      Day[]
+
+  @@map("programs")
+}
+
+model Day {
+  id         String      @id @default(cuid())
+  name       String      
+  date       DateTime    
+  createdAt  DateTime    @default(now())
+  programId  String
+  broadcasts Broadcast[]
+  program    Program     @relation(fields: [programId], references: [id], onDelete: Cascade)
+  modelId   String?
+  model     Model?     @relation("DayModel", fields: [modelId], references: [id], onDelete: Cascade)
+  billboardConfigId String?
+  billboardConfig  BillboardConfig? @relation(fields: [billboardConfigId], references: [id], onDelete: SetNull)
+  logFiles  LogFile[]
+
+  @@map("days")
+}
+
+model Broadcast {
+  id               String          @id @default(cuid())
+  name             String
+  createdAt        DateTime        @default(now())
+  startTime        DateTime
+  endTime          DateTime
+  status           BroadcastStatus @default(PENDING)
+  channel          Channel
+  region           Region
+  dayId            String
+  day              Day             @relation(fields: [dayId], references: [id], onDelete: Cascade)
+  detections       Detection[]
+
+  @@map("broadcasts")
+}
+
+model Integration {
+  id                    String                 @id @default(cuid())
+  name                  String                 @unique
+  assets                Asset[]
+  billboardConfigAssets BillboardConfigAsset[]
+
+  @@map("integrations")
+}
+
+model Asset {
+  id            String      @id @default(cuid())
+  name          String
+  integrationId String
+  modelId       String?
+  brandId       String?
+  size          String
+  location      String
+  createdAt     DateTime    @default(now())
+  keywords      String[]
+  brand         Brand?      @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  integration   Integration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+  model         Model?      @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  detections    Detection[]
+  templates     Template[]
+
+  @@map("assets")
+}
+
+model Brand {
+  id                    String                 @id @default(cuid())
+  name                  String                 @unique
+  slug                  String                 @unique
+  image                 String
+  assets                Asset[]
+  billboardConfigAssets BillboardConfigAsset[]
+
+  @@map("brands")
+}
+
+model Detection {
+  id            String    @id @default(cuid())
+  video         String?
+  still         String?
+  falsePositive Boolean   @default(false)
+  assetId       String?
+  createdAt     DateTime  @default(now())
+  endTime       DateTime
+  startTime     DateTime
+  broadcastId   String
+  isBillboard   Boolean   @default(false)
+  billboardConfigAssetId String?
+  asset         Asset?     @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  broadcast     Broadcast @relation(fields: [broadcastId], references: [id], onDelete: Cascade)
+  billboardConfigAsset BillboardConfigAsset? @relation(fields: [billboardConfigAssetId], references: [id], onDelete: SetNull)
+
+  @@map("detections")
+}
+
+model Template {
+  id        String   @id @default(cuid())
+  s3_key    String   @unique
+  modelId   String
+  assetId   String
+  createdAt DateTime @default(now())
+  asset     Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@map("templates")
+}
+
+model Model {
+  id                  String      @id @default(cuid())
+  name                String      @unique
+  createdAt           DateTime    @default(now())
+  status              ModelStatus @default(PENDING)
+  assets              Asset[]
+  days                Day[]       @relation("DayModel")
+
+  @@map("models")
+}
+
+model BillboardConfig {
+  id                String   @id @default(cuid())
+  name              String
+  createdAt         DateTime @default(now())
+  assets            BillboardConfigAsset[]
+  days              Day[]
+
+  @@map("billboard_configs")
+}
+
+model BillboardConfigAsset {
+  id                 String          @id @default(cuid())
+  configId          String
+  brandId           String
+  integrationId     String
+  keystrings        String[]
+  createdAt         DateTime        @default(now())
+  config            BillboardConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+  brand             Brand           @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  integration       Integration?    @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+  detections        Detection[]
+
+  @@map("billboard_config_assets")
+}
+
+enum ModelStatus {
+  PENDING
+  TRAINING
+  TRAINED
+  TRAINING_SESSION_STARTED
+  GENERATING_SYNTHETIC_DATA
+}
+
+enum Channel {
+  CH9
+  GO
+  GEM
+}
+
+enum Region {
+  SYD
+  MEL
+  BNE
+  PER
+  ADL
+}
+
+enum BroadcastStatus {
+  PENDING
+  DOWNLOADING_VIDEO
+  AWAITING_ANALYSIS
+  ANALYSING
+  ANALYSIS_COMPLETED
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  USER
+}
+
+model LogFile {
+  id        String   @id @default(cuid())
+  s3_key    String   @unique
+  createdAt DateTime @default(now())
+  day       Day      @relation(fields: [dayId], references: [id], onDelete: Cascade)
+  dayId     String
+  region    Region
+  channel   Channel
+
+  @@map("log_files")
+}

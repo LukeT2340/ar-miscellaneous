@@ -101,13 +101,51 @@ export const handler = async (event: LambdaEvent) => {
       },
     })
 
-    // Add cleanup step
-    const lastStep = `integration-analysis-${channel}`
+    steps.push({
+      Name: `audio-integration-analysis-${channel}`,
+      Type: "Training",
+      Arguments: {
+        AlgorithmSpecification: {
+          TrainingImage:
+            "763104351884.dkr.ecr.ap-southeast-2.amazonaws.com/pytorch-training:2.5.1-gpu-py311",
+          TrainingInputMode: "File",
+        },
+        RoleArn: process.env.ROLE_ARN!,
+        OutputDataConfig: {
+          S3OutputPath: `s3://${process.env.S3_BUCKET}/pipeline-audio-analysis/${broadcastId}/${channel}/`,
+        },
+        ResourceConfig: {
+          InstanceType: "ml.t3.large",
+          InstanceCount: 1,
+          VolumeSizeInGB: 100,
+        },
+        StoppingCondition: {
+          MaxRuntimeInSeconds: 30 * 3600,
+        },
+        HyperParameters: {
+          sagemaker_program: "main.py",
+          sagemaker_submit_directory: `s3://${process.env.S3_BUCKET}/audio-integration-analysis-scripts/sourcedir.tar.gz`,
+        },
+        Environment: {
+          BROADCAST_ID: broadcastId,
+          CHANNEL: channel.toLowerCase(),
+          STREAM_REGION: region.toLowerCase(),
+          DB_CONNECTION_STRING: process.env.DATABASE_URL!,
+          AWS_REGION: process.env.AWS_REGION || "ap-southeast-2",
+        },
+      },
+    })
+
+    // Add cleanup step - depends on both analysis steps
+    const lastStep = [
+      `integration-analysis-${channel}`,
+      `audio-integration-analysis-${channel}`,
+    ]
 
     steps.push({
       Name: `cleanup-broadcast-${channel}-${region}`,
       Type: "Training",
-      DependsOn: [lastStep],
+      DependsOn: lastStep,
       Arguments: {
         AlgorithmSpecification: {
           TrainingImage:

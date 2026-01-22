@@ -1,0 +1,14 @@
+{
+  "scripts": {
+    "build": "node build.js",
+    "deploy": "npm run build && cd dist && zip -r ../function.zip . && cd .. && aws lambda update-function-code --function-name create-clip --zip-file fileb://function.zip"
+  },
+  "devDependencies": {
+    "esbuild": "^0.27.2",
+    "@types/node": "^20.0.0"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.958.0",
+    "@prisma/client": "^6.2.0"
+  }
+}
