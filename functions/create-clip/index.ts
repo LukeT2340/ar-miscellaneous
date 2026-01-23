@@ -61,8 +61,7 @@ export const handler = async (event: LambdaEvent) => {
     const startTime = new Date(centerTime.getTime() - secondsBefore * 1000)
     const endTime = new Date(centerTime.getTime() + secondsAfter * 1000)
 
-    // Convert to Unix timestamps for stream URL (add 15 second offset)
-    const centerTimestamp = Math.floor(centerTime.getTime() / 1000) + 15
+    const centerTimestamp = Math.floor(centerTime.getTime() / 1000)
     const startTimestamp = centerTimestamp - secondsBefore
     const endTimestamp = centerTimestamp + secondsAfter
 
@@ -79,8 +78,19 @@ export const handler = async (event: LambdaEvent) => {
     }
 
     // Find the day for this date
-    const [year, month, dayNum] = date.split("-").map(Number)
-    const dayDate = new Date(Date.UTC(year, month - 1, dayNum, 0, 0, 0, 0))
+    // Input date and time are in UTC, but Days are stored in AEST in the DB
+    // Convert centerTime to AEST by adding 10 hours
+    const aestTime = new Date(centerTime.getTime() + 10 * 60 * 60 * 1000)
+
+    // Get the AEST date at midnight (zero hours/minutes)
+    const aestYear = aestTime.getUTCFullYear()
+    const aestMonth = aestTime.getUTCMonth()
+    const aestDay = aestTime.getUTCDate()
+    const dayDate = new Date(Date.UTC(aestYear, aestMonth, aestDay, 0, 0, 0, 0))
+
+    console.log(
+      `UTC: ${fullDateTime}, AEST: ${aestTime.toISOString()}, Day lookup: ${dayDate.toISOString()}`,
+    )
 
     const day = await prisma.day.findFirst({
       where: {
@@ -115,21 +125,12 @@ export const handler = async (event: LambdaEvent) => {
 
     if (!broadcast) {
       // Create a new broadcast
-      broadcast = await prisma.broadcast.create({
-        data: {
-          name: `${channel} ${region} - ${centerTime.toLocaleTimeString("en-AU", { hour12: false })}`,
-          startTime: startTime,
-          endTime: endTime,
-          channel: channel,
-          region: region,
-          dayId: day.id,
-        },
-      })
+      throw new Error("No broadcast found for this time window.")
     }
 
     // Construct stream URL
     const regionCode = region.toLowerCase()
-    const channelCode = channel === "CH9" ? "ch9" : channel.toLowerCase()
+    const channelCode = channel.toLowerCase()
     const streamUrl = `https://prod-simulcast-${regionCode}-${channelCode}.livestream-cdn.9vms.com.au/u/prod/simulcast/${regionCode}/${channelCode}/hls/r1/index.m3u8?start=${startTimestamp}&end=${endTimestamp}&aws.manifestfilter=audio_codec:AACL;video_height:720-720;video_framerate:25-25`
 
     // Create temporary directory for download
@@ -139,10 +140,33 @@ export const handler = async (event: LambdaEvent) => {
     try {
       // Download stream using ffmpeg with precise duration
       const duration = secondsBefore + secondsAfter
-      const ffmpegCommand = `ffmpeg -i "${streamUrl}" -t ${duration} -c:v libx264 -preset fast -c:a aac -y "${tempFilePath}"`
+      // Use bundled ffmpeg if available, otherwise use system ffmpeg
+      const ffmpegPath = process.env.LAMBDA_TASK_ROOT
+        ? `${process.env.LAMBDA_TASK_ROOT}/bin/ffmpeg`
+        : "ffmpeg"
+      const ffmpegCommand = `${ffmpegPath} -i "${streamUrl}" -t ${duration} -c:v libx264 -preset ultrafast -c:a aac -y "${tempFilePath}"`
 
       console.log(`Downloading clip: ${ffmpegCommand}`)
-      await execAsync(ffmpegCommand, { timeout: 300000 }) // 5 minute timeout
+
+      try {
+        const { stdout, stderr } = await execAsync(ffmpegCommand, {
+          timeout: 300000, // 5 minute timeout
+          maxBuffer: 10 * 1024 * 1024, // 10MB buffer for output
+        })
+        console.log(`FFmpeg stdout: ${stdout}`)
+        if (stderr) console.log(`FFmpeg stderr: ${stderr}`)
+      } catch (execError: any) {
+        console.error(`FFmpeg execution failed:`, execError)
+        console.error(`FFmpeg stdout: ${execError.stdout}`)
+        console.error(`FFmpeg stderr: ${execError.stderr}`)
+        throw new Error(
+          `FFmpeg failed: ${execError.message}\nStderr: ${execError.stderr}`,
+        )
+      }
+
+      // Check if file was created
+      const fileStats = await fs.stat(tempFilePath)
+      console.log(`Video file created: ${fileStats.size} bytes`)
 
       // Read the file
       const fileBuffer = await fs.readFile(tempFilePath)

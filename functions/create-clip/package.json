@@ -1,11 +1,13 @@
 {
   "scripts": {
     "build": "node build.js",
-    "deploy": "npm run build && cd dist && zip -r ../function.zip . && cd .. && aws lambda update-function-code --function-name create-clip --zip-file fileb://function.zip"
+    "package": "npm run build && ./package.sh",
+    "deploy": "npm run package && aws s3 cp function.zip s3://$S3_BUCKET/lambda-functions/create-clip.zip && aws lambda update-function-code --function-name create-clip --s3-bucket $S3_BUCKET --s3-key lambda-functions/create-clip.zip"
   },
   "devDependencies": {
     "esbuild": "^0.27.2",
-    "@types/node": "^20.0.0"
+    "@types/node": "^20.0.0",
+    "prisma": "^6.2.0"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.958.0",
