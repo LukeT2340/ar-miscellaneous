@@ -55,7 +55,8 @@ model Broadcast {
   createdAt        DateTime        @default(now())
   startTime        DateTime
   endTime          DateTime
-  status           BroadcastStatus @default(PENDING)
+  integrationStatus           BroadcastStatus @default(PENDING)
+  billboardStatus             BroadcastStatus @default(PENDING)
   channel          Channel
   region           Region
   dayId            String

@@ -8,6 +8,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
@@ -19,15 +20,21 @@ model User {
   @@map("users")
 }
 
+enum Layout {
+  DAYS
+  ROUNDS
+}
+
 model Program {
   id        String   @id @default(cuid())
   name      String
   slug      String   @unique
   image     String
-  keyword   String // Pulls broadcast data from 9now api based on this keyword, also searches LOG files for billboards for program matching this
+  keyword   String // Pulls broadcast data from LOG files based on this keyword
   createdAt DateTime @default(now())
   year      Int
   days      Day[]
+  layout   Layout   @default(DAYS)
 
   @@map("programs")
 }
@@ -55,7 +62,8 @@ model Broadcast {
   createdAt        DateTime        @default(now())
   startTime        DateTime
   endTime          DateTime
-  status           BroadcastStatus @default(PENDING)
+  integrationStatus           BroadcastStatus @default(PENDING)
+  billboardStatus             BroadcastStatus @default(PENDING)
   channel          Channel
   region           Region
   dayId            String
@@ -84,6 +92,8 @@ model Asset {
   location      String
   createdAt     DateTime    @default(now())
   keywords      String[]
+  audioOnly     Boolean?     @default(false)
+  audioSearchText String[]
   brand         Brand?      @relation(fields: [brandId], references: [id], onDelete: Cascade)
   integration   Integration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
   model         Model?      @relation(fields: [modelId], references: [id], onDelete: Cascade)
@@ -115,7 +125,11 @@ model Detection {
   startTime     DateTime
   broadcastId   String
   isBillboard   Boolean   @default(false)
+  solusBillboard Boolean?   @default(false)
+  audioMention  Boolean?   @default(false)
   billboardConfigAssetId String?
+  timeOnScreen  Float?
+  categorised   Boolean   @default(true)
   asset         Asset?     @relation(fields: [assetId], references: [id], onDelete: Cascade)
   broadcast     Broadcast @relation(fields: [broadcastId], references: [id], onDelete: Cascade)
   billboardConfigAsset BillboardConfigAsset? @relation(fields: [billboardConfigAssetId], references: [id], onDelete: SetNull)
